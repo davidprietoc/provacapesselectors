@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa GeoJSON con Selector de Capas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+        }
+        #map {
+            height: 100vh;
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 1.5em;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+        .popup-header {
+            background: green;
+            color: white;
+            font-weight: bold;
+            padding: 5px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .popup-content {
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([41.3879, 2.16992], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        function getColor(value) {
+            return value > 120 ? '#800026' :
+                   value > 50  ? '#E31A1C' :
+                   value > 30  ? '#FC4E2A' :
+                   value > 10  ? '#FD8D3C' :
+                                 '#FED976';
+        }
+
+        function styleVerificats(feature) {
+            return {
+                fillColor: getColor(feature.properties.right_inscrits_verificats || 0),
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.7
+            };
+        }
+
+        function styleNoVerificats(feature) {
+            return {
+                fillColor: getColor(feature.properties.right_inscrits_no_verificats || 0),
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.7
+            };
+        }
+
+        fetch('baseC.geojson')
+            .then(response => response.json())
+            .then(data => {
+                var verificatsLayer = L.geoJSON(data, {
+                    style: styleVerificats,
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            var municipi = feature.properties.municipi || 'Desconocido';
+                            var verificats = feature.properties.right_inscrits_verificats || 0;
+                            var noVerificats = feature.properties.right_inscrits_no_verificats || 0;
+                            
+                            var popupContent = `<div class='popup-header'>${municipi}</div>
+                                                <div class='popup-content'>
+                                                    <b>Verificats:</b> ${verificats}<br>
+                                                    <b>No Verificats:</b> ${noVerificats}
+                                                </div>`;
+                            layer.bindPopup(popupContent);
+                        }
+                    }
+                });
+                
+                var noVerificatsLayer = L.geoJSON(data, {
+                    style: styleNoVerificats,
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            var municipi = feature.properties.municipi || 'Desconocido';
+                            var verificats = feature.properties.right_inscrits_verificats || 0;
+                            var noVerificats = feature.properties.right_inscrits_no_verificats || 0;
+                            
+                            var popupContent = `<div class='popup-header'>${municipi}</div>
+                                                <div class='popup-content'>
+                                                    <b>Verificats:</b> ${verificats}<br>
+                                                    <b>No Verificats:</b> ${noVerificats}
+                                                </div>`;
+                            layer.bindPopup(popupContent);
+                        }
+                    }
+                });
+                
+                var baseLayers = {
+                    "Verificats": verificatsLayer,
+                    "No Verificats": noVerificatsLayer
+                };
+                
+                verificatsLayer.addTo(map);
+                L.control.layers(baseLayers).addTo(map);
+                map.fitBounds(verificatsLayer.getBounds());
+                
+                var legend = L.control({position: 'topright'});
+                legend.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'legend');
+                    var labels = [
+                        '<i style="background:#FED976; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></i> 0 - 10',
+                        '<i style="background:#FD8D3C; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></i> 11 - 30',
+                        '<i style="background:#FC4E2A; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></i> 31 - 50',
+                        '<i style="background:#E31A1C; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></i> 51 - 120',
+                        '<i style="background:#800026; width: 18px; height: 18px; display: inline-block; margin-right: 5px;"></i> 120+'
+                    ];
+                    
+                    div.innerHTML = '<b>Verificats / No Verificats</b><br>' + labels.join('<br>');
+                    return div;
+                };
+                legend.addTo(map);
+            })
+            .catch(error => console.error('Error cargando el GeoJSON:', error));
+    </script>
+</body>
+</html>
